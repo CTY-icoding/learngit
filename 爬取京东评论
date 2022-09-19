@@ -1,0 +1,43 @@
+import pymysql
+import re
+import requests
+import json
+def write_to_DB(name, content, time):
+    db = pymysql.connect(host='localhost', port=3306, user='root', passwd='tianyi666', db='spider', charset='utf8')
+    cursor = db.cursor()
+
+    sql = """INSERT INTO try1 VALUES ("%s", "%s", "%s")
+    """ % (name, content, time)
+
+    try:
+        cursor.execute(sql)
+        db.commit()
+    except:
+        db.rollback()
+
+    db.close()
+def getData(page):
+    #分析参数可知 一页有十条数据 故需爬取至少五十页
+    url = 'https://club.jd.com/comment/productPageComments.action?callback=fetchJSON_comment98&productId=100019125569&score=0&sortType=5&page={}&pageSize=10&isShadowSku=0&rid=0&fold=1'.format(page)
+
+    #UA伪装
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36 SLBrowser/7.0.0.12151 SLBChan/103",
+    }
+    response = requests.get(url = url, headers=headers)
+    #正则匹配
+    obj = re.compile(r'"id":.*?"content":"(?P<content>.*?)"'
+                     r'.*?"creationTime":"(?P<time>.*?)".*?"nickname":"(?P<name>.*?)"',re.S)
+    result = obj.finditer(response.text)
+    for it in result:
+        r1 = it.group('content')
+        r2 = it.group('time')
+        r3 = it.group('name')
+        write_to_DB(r3,r1,r2)
+    print("ok")
+
+if __name__ == "__main__":
+    # 爬第一页和第二页
+    for i in range(0,51):
+        getData(i)
+    print("Mission Success!")
